@@ -1,0 +1,59 @@
+variables:
+  IMAGE_MVN: rvancea/maven-chrome-jdk8:latest
+  IMAGE_SSH: ictu/sshpass
+  PRODUCTION_SERVER_USER: "tusi"
+  PRODUCTION_SERVER: "182.163.102.68"
+  app_version: "release_stg_1"
+  app_name: "mockService"
+  mockName: "${app_name}##{$app_version}.war"
+  tomcat: "/usr/share/apache-tomcat-8.5.33-6060/webapps/"
+  dir: /shariba/mock-service-git-ci-cd
+
+.job_template:
+  before_script:
+   - chmod +x deploy-qa.sh
+cache:
+  paths:
+    - .m2/repository/
+    - target/
+  policy: pull-push
+stages:
+  - build
+  - test
+  - deploy
+
+mock:war:
+  image: $IMAGE_MVN
+  stage: build
+  only:
+    - main
+  script:
+    - echo "path- $CI_PROJECT_DIR"
+    - echo "Packaging"
+    - mvn clean
+    - mvn package
+    - ls -als target
+  artifacts:
+    paths:
+      - target/*
+    expire_in: 1 week
+test:
+  image: $IMAGE_MVN
+  stage: test
+  script: mvn clean test
+deploy:
+  image: $IMAGE_SSH
+  stage: deploy
+  script:
+    - echo $CI_PROJECT_DIR
+    - pwd
+    - ls -als target
+    - chmod -R 777 target/*
+    - sh $CI_PROJECT_DIR/deploy-qa.sh
+  dependencies:
+    - mock:war
+  environment:
+    name: staging
+
+ 
+
